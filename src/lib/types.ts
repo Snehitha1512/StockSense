@@ -132,6 +132,10 @@ export interface TransferLine {
   uom?: string;
   quantity: number;
   available_quantity?: number;
+  source_location_id?: string;
+  destination_location_id?: string;
+  source_location_name?: string;
+  destination_location_name?: string;
 }
 
 export interface Transfer {

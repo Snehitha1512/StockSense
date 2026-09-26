@@ -28,6 +28,8 @@ let initialized = false;
 export async function initDb(): Promise<void> {
   if (initialized) return;
 
+  await db.execute("PRAGMA journal_mode = WAL;");
+  await db.execute("PRAGMA busy_timeout = 5000;");
   await db.execute("PRAGMA foreign_keys = ON;");
 
   // Users table
@@ -178,16 +180,37 @@ export async function initDb(): Promise<void> {
     );
   `);
 
-  // Transfer lines
+  // Transfer lines (per-line source/destination since FIX-006)
   await db.execute(`
     CREATE TABLE IF NOT EXISTS transfer_lines (
       id TEXT PRIMARY KEY,
       transfer_id TEXT NOT NULL,
       product_id TEXT NOT NULL,
       quantity REAL NOT NULL,
+      source_location_id TEXT,
+      destination_location_id TEXT,
       FOREIGN KEY (transfer_id) REFERENCES transfers(id) ON DELETE CASCADE,
-      FOREIGN KEY (product_id) REFERENCES products(id)
+      FOREIGN KEY (product_id) REFERENCES products(id),
+      FOREIGN KEY (source_location_id) REFERENCES locations(id),
+      FOREIGN KEY (destination_location_id) REFERENCES locations(id)
     );
+  `);
+
+  // Migration: add per-line source/destination columns if they don't exist yet (idempotent)
+  try {
+    await db.execute("ALTER TABLE transfer_lines ADD COLUMN source_location_id TEXT;");
+  } catch { /* column already exists */ }
+  try {
+    await db.execute("ALTER TABLE transfer_lines ADD COLUMN destination_location_id TEXT;");
+  } catch { /* column already exists */ }
+
+  // Migration: backfill existing transfer_lines from header-level source/destination
+  await db.execute(`
+    UPDATE transfer_lines
+    SET
+      source_location_id = (SELECT source_location_id FROM transfers WHERE transfers.id = transfer_lines.transfer_id),
+      destination_location_id = (SELECT destination_location_id FROM transfers WHERE transfers.id = transfer_lines.transfer_id)
+    WHERE source_location_id IS NULL OR destination_location_id IS NULL;
   `);
 
   // Stock Adjustments table
