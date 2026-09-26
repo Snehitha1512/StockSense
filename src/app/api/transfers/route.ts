@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, initDb } from "@/lib/db";
 import { generateReference, validateTransfer, cancelOperation, getStockLevel } from "@/lib/inventoryEngine";
 import { requireAuth, requirePermission, getSessionUser, verifyTransferLocations, AuthError } from "@/lib/auth";
-import { isStaff } from "@/lib/rbac";
+import { isStaff, isManager } from "@/lib/rbac";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
@@ -69,16 +69,20 @@ export async function GET(req: NextRequest) {
   const transfersWithLines = await Promise.all(
     res.rows.map(async (row) => {
       const linesRes = await db.execute({
-        sql: `SELECT tl.*, p.name as product_name, p.sku, p.uom
+        sql: `SELECT tl.*, p.name as product_name, p.sku, p.uom,
+                     lsrc.name as source_location_name, ldest.name as destination_location_name
               FROM transfer_lines tl
               JOIN products p ON tl.product_id = p.id
+              LEFT JOIN locations lsrc ON tl.source_location_id = lsrc.id
+              LEFT JOIN locations ldest ON tl.destination_location_id = ldest.id
               WHERE tl.transfer_id = ?`,
         args: [row.id],
       });
 
       const linesWithStock = await Promise.all(
         linesRes.rows.map(async (line) => {
-          const avail = await getStockLevel(String(line.product_id), String(row.source_location_id));
+          const lineSrc = String(line.source_location_id || row.source_location_id || "");
+          const avail = lineSrc ? await getStockLevel(String(line.product_id), lineSrc) : 0;
           return {
             ...line,
             available_quantity: avail,
@@ -105,45 +109,65 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { source_location_id, destination_location_id, scheduled_date, notes, lines, status = "Draft" } = body;
 
-    if (!source_location_id || !destination_location_id || !scheduled_date) {
+    if (!scheduled_date) {
       return NextResponse.json(
-        { error: "Source location, destination location, and scheduled date are required" },
+        { error: "Scheduled date is required" },
         { status: 400 }
       );
     }
-
-    if (source_location_id === destination_location_id) {
-      return NextResponse.json(
-        { error: "Source and destination locations cannot be the same" },
-        { status: 400 }
-      );
-    }
-
-    // Enforce dual location scoping for staff
-    await verifyTransferLocations(user, source_location_id, destination_location_id);
 
     if (!lines || !Array.isArray(lines) || lines.length === 0) {
       return NextResponse.json({ error: "At least one product line is required" }, { status: 400 });
     }
 
+    // Validate each line has per-line locations (or fall back to header-level)
     for (const line of lines) {
+      const lineSrc = line.source_location_id || source_location_id;
+      const lineDest = line.destination_location_id || destination_location_id;
+
+      if (!lineSrc || !lineDest) {
+        return NextResponse.json(
+          { error: "Each line must have source and destination locations (or set header-level defaults)" },
+          { status: 400 }
+        );
+      }
+
+      if (lineSrc === lineDest) {
+        return NextResponse.json(
+          { error: "Source and destination locations cannot be the same for any line" },
+          { status: 400 }
+        );
+      }
+
       if (!line.product_id || !line.quantity || Number(line.quantity) <= 0) {
         return NextResponse.json(
           { error: "Each line must have a selected product and a quantity greater than zero" },
           { status: 400 }
         );
       }
+
+      // Enforce dual location scoping for staff
+      await verifyTransferLocations(user, lineSrc, lineDest);
     }
 
-    const locRes = await db.execute({
+    // Use first line's source for reference generation if no header source
+    const refSrc = source_location_id || lines[0]?.source_location_id;
+    const locRes = refSrc ? await db.execute({
       sql: `SELECT w.code FROM locations l JOIN warehouses w ON l.warehouse_id = w.id WHERE l.id = ?`,
-      args: [source_location_id],
-    });
+      args: [refSrc],
+    }) : { rows: [] };
     const whCode = locRes.rows.length > 0 ? String(locRes.rows[0].code) : "WH";
 
     const reference = await generateReference("INT", whCode);
     const id = crypto.randomUUID();
     const now = Date.now();
+
+    // Store header-level locations for backwards compat (use first line's or provided value)
+    const headerSrc = source_location_id || lines[0]?.source_location_id;
+    const headerDest = destination_location_id || lines[lines.length - 1]?.destination_location_id;
+
+    // Default new transfers to "Waiting" (Pending Approval from Manager)
+    const initialStatus = status && isManager(user.role) ? status : "Waiting";
 
     await db.execute({
       sql: `INSERT INTO transfers (id, reference, source_location_id, destination_location_id, scheduled_date, status, notes, created_at)
@@ -151,25 +175,27 @@ export async function POST(req: NextRequest) {
       args: [
         id,
         reference,
-        source_location_id,
-        destination_location_id,
+        headerSrc,
+        headerDest,
         scheduled_date,
-        status || "Draft",
+        initialStatus,
         notes ? notes.trim() : "",
         now,
       ],
     });
 
     for (const line of lines) {
+      const lineSrc = line.source_location_id || source_location_id;
+      const lineDest = line.destination_location_id || destination_location_id;
       await db.execute({
-        sql: "INSERT INTO transfer_lines (id, transfer_id, product_id, quantity) VALUES (?, ?, ?, ?)",
-        args: [crypto.randomUUID(), id, line.product_id, Number(line.quantity)],
+        sql: "INSERT INTO transfer_lines (id, transfer_id, product_id, quantity, source_location_id, destination_location_id) VALUES (?, ?, ?, ?, ?, ?)",
+        args: [crypto.randomUUID(), id, line.product_id, Number(line.quantity), lineSrc, lineDest],
       });
     }
 
     return NextResponse.json({
       success: true,
-      transfer: { id, reference, source_location_id, destination_location_id, scheduled_date, status },
+      transfer: { id, reference, source_location_id: headerSrc, destination_location_id: headerDest, scheduled_date, status: initialStatus },
     });
   } catch (err: unknown) {
     if (err instanceof AuthError) {
@@ -209,6 +235,7 @@ export async function PATCH(req: NextRequest) {
     );
 
     if (action === "validate") {
+      requirePermission(user, "transfers.validate");
       const result = await validateTransfer(id);
       return NextResponse.json(result);
     }

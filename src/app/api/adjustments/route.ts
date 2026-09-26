@@ -81,10 +81,10 @@ export async function POST(req: NextRequest) {
     // Verify staff has access to this warehouse location
     await verifyLocationAccess(user, location_id);
 
-    // If auto_validate requested, staff cannot validate adjustments
+    // If auto_validate requested, check the user has validate permission
     if (auto_validate && !hasPermission(user.role, "adjustments.validate")) {
       return NextResponse.json(
-        { error: "Forbidden: Only Inventory Managers can validate adjustments" },
+        { error: "Forbidden: You do not have permission to validate adjustments" },
         { status: 403 }
       );
     }
@@ -158,7 +158,7 @@ export async function PATCH(req: NextRequest) {
     await verifyLocationAccess(user, String(current.rows[0].location_id));
 
     if (action === "validate") {
-      // STRICT: Manager only validation
+      // Both managers and staff can validate adjustments
       requirePermission(user, "adjustments.validate");
       const result = await validateAdjustment(id);
       return NextResponse.json(result);

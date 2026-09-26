@@ -17,6 +17,7 @@ export type Permission =
   | "transfers.view"
   | "transfers.create"
   | "transfers.operate"
+  | "transfers.validate"
   | "adjustments.view"
   | "adjustments.create"
   | "adjustments.validate"
@@ -49,6 +50,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "transfers.view",
     "transfers.create",
     "transfers.operate",
+    "transfers.validate",
     "adjustments.view",
     "adjustments.create",
     "adjustments.validate",
@@ -67,10 +69,10 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "transfers.view",
     "transfers.create",
     "transfers.operate",
+    // NOTE: 'transfers.validate' is strictly EXCLUDED (Manager only — requires manager approval)
     "adjustments.view",
     "adjustments.create", // Can create draft adjustments
-    // NOTE: 'adjustments.validate' is strictly EXCLUDED (Manager only!)
-    // NOTE: 'products.manage', 'categories.manage', 'warehouses.manage', 'locations.manage' are EXCLUDED
+    // NOTE: 'adjustments.validate', 'products.manage', 'categories.manage', 'warehouses.manage', 'locations.manage' are EXCLUDED (Manager only)
     "history.view",
   ]),
 };

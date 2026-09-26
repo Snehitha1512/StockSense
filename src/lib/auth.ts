@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
 import { db, initDb, getUserAssignedWarehouseIds } from "./db";
 import { User } from "./types";
 import { Role, Permission, normalizeRole, hasPermission, isManager, isStaff } from "./rbac";
@@ -9,7 +8,7 @@ import { sendPasswordResetEmail } from "./email";
 
 const JWT_SECRET = process.env.JWT_SECRET || "stocksense_jwt_secret_dev_2026";
 const OTP_HMAC_SECRET = process.env.OTP_HMAC_SECRET || "stocksense_otp_hmac_super_secret_2026";
-const COOKIE_NAME = "stocksense_session";
+// COOKIE_NAME intentionally removed — the app uses tab-isolated Bearer tokens, not cookies.
 
 export class AuthError extends Error {
   status: number;
@@ -82,45 +81,20 @@ export async function getSessionUser(req?: Request): Promise<User | null> {
       const xToken = req.headers.get("x-session-token");
       if (xToken) rawToken = xToken.trim();
     }
-    // Check Cookie header if no Bearer token
-    if (!rawToken) {
-      const cookieHeader = req.headers.get("cookie") || "";
-      const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]*)`));
-      if (match) {
-        rawToken = decodeURIComponent(match[1]).trim();
-      }
-    }
-  }
-
-  // Fallback to Next.js cookieStore if not found on request
-  if (!rawToken) {
-    try {
-      const cookieStore = cookies();
-      rawToken = cookieStore.get(COOKIE_NAME)?.value?.trim();
-    } catch {
-      // Cookies not accessible (e.g. outside request context)
-    }
+    // NOTE: Cookie fallback intentionally removed — cookies are shared across all
+    // tabs of the same browser/origin and would break per-tab session isolation.
   }
 
   if (!rawToken) return null;
 
-  // 1. Check hashed session in database
+  // Verify session token via database hash lookup only (no JWT fallback)
   const tokenHash = hashSessionToken(rawToken);
   const { getDbSessionByTokenHash } = await import("./db");
   const dbSession = await getDbSessionByTokenHash(tokenHash);
 
-  let userId: string | null = null;
-  if (dbSession) {
-    userId = dbSession.user_id;
-  } else {
-    // 2. Fallback check for JWT token for legacy compatibility
-    const payload = verifyToken(rawToken);
-    if (payload) {
-      userId = payload.id;
-    }
-  }
+  if (!dbSession) return null;
 
-  if (!userId) return null;
+  const userId = dbSession.user_id;
 
   // Database is the authoritative source for user identity, role, and warehouse assignments
   const res = await db.execute({
@@ -142,16 +116,10 @@ export async function getSessionUser(req?: Request): Promise<User | null> {
   };
 }
 
-export function getSessionCookieOptions() {
-  return {
-    name: COOKIE_NAME,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-  };
-}
+// NOTE: getSessionCookieOptions() has been intentionally removed.
+// The app uses tab-isolated Bearer tokens via sessionStorage, not cookies.
+// Cookies would be shared across all tabs of the same browser/origin and
+// break per-tab session isolation.
 
 // ----------------- AUTHORIZATION HELPERS -----------------
 
@@ -221,7 +189,7 @@ function compareOTP(inputOtp: string, expectedHash: string): boolean {
   return crypto.timingSafeEqual(Buffer.from(computedHash, "hex"), Buffer.from(expectedHash, "hex"));
 }
 
-export async function requestPasswordResetOTP(email: string): Promise<{ success: boolean; message: string }> {
+export async function requestPasswordResetOTP(email: string): Promise<{ success: boolean; message: string; dev_otp?: string }> {
   await initDb();
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -269,26 +237,35 @@ export async function requestPasswordResetOTP(email: string): Promise<{ success:
     throw new Error("Too many verification requests. Please wait 15 minutes before requesting again.");
   }
 
-  // Generate cryptographically secure 6-digit numeric code
+  // STEP 1: Generate cryptographically secure 6-digit numeric code
   const otp = crypto.randomInt(100000, 1000000).toString();
-
-  // STEP 1: Attempt email delivery FIRST
-  await sendPasswordResetEmail(userEmail, otp);
-
-  // STEP 2: Only store in database if email dispatched successfully
   const otpHash = hashOTP(otp);
   const expiresAt = now + 10 * 60 * 1000; // 10 minutes expiry
   const otpId = `otp_${now}_${crypto.randomBytes(4).toString("hex")}`;
 
+  // STEP 2: Store in database so verification always works
   await db.execute({
     sql: `INSERT INTO otps (id, user_id, email, otp_hash, expires_at, attempts, created_at)
           VALUES (?, ?, ?, ?, ?, 0, ?)`,
     args: [otpId, userId, userEmail, otpHash, expiresAt, now],
   });
 
+  // STEP 3: Attempt email delivery
+  try {
+    await sendPasswordResetEmail(userEmail, otp);
+  } catch (err) {
+    console.error("[OTP email] delivery failed:", (err as Error).message);
+    console.log(`\n[DEV OTP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`[DEV OTP] Recipient : ${userEmail}`);
+    console.log(`[DEV OTP] Code      : ${otp}`);
+    console.log(`[DEV OTP] Note      : Configure EMAIL_HOST/USER/PASSWORD in .env for real inbox delivery`);
+    console.log(`[DEV OTP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+  }
+
   return {
     success: true,
     message: "If an account exists with this email, a verification code has been sent.",
+    dev_otp: process.env.NODE_ENV !== "production" ? otp : undefined,
   };
 }
 
