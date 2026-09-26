@@ -83,8 +83,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Role | Email | Password | Assigned Warehouse |
 |---|---|---|---|
-| **Inventory Manager** | `manager@stocksense.com` | `admin123` | Global (All Warehouses) |
-| **Warehouse Staff** | `staff@stocksense.com` | `staff123` | Main Warehouse (`WH`) |
+| **Inventory Manager** | `manager@stocksense.com` | `password123` | Global (All Warehouses) |
+| **Warehouse Staff** | `staff@stocksense.com` | `password123` | Main Warehouse (`WH`) |
 
 ---
 

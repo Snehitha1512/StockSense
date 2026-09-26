@@ -202,7 +202,7 @@ async function runTestSuite() {
     sql: "SELECT quantity FROM stock_levels WHERE product_id = ? AND location_id = ?",
     args: [testProdId, locMainStock.id],
   });
-  assert(Number(stockBeforeValidation.rows[0]?.quantity) === initialStock, "Stock unchanged while adjustment is Draft");
+  assert(Number(stockBeforeValidation.rows[0]?.quantity || 0) === initialStock, "Stock unchanged while adjustment is Draft");
 
   // Manager validates adjustment
   requirePermission(managerUser, "adjustments.validate");
