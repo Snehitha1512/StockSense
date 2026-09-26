@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { blurOnWheel } from "@/lib/formHelpers";
 import {
   Package,
   Plus,
@@ -241,7 +242,7 @@ export default function StockPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by Product Name or SKU..."
-                className="w-full pl-9 pr-3.5 py-2 text-xs"
+                className="w-full has-icon-left pl-11 pr-3.5 py-2 text-xs"
               />
             </div>
 
@@ -478,6 +479,7 @@ export default function StockPage() {
                   min="0"
                   value={formMinStock}
                   onChange={(e) => setFormMinStock(Number(e.target.value))}
+                  onWheel={blurOnWheel}
                   className="w-full text-xs"
                 />
               </div>
@@ -497,6 +499,7 @@ export default function StockPage() {
                     min="0"
                     value={formInitialStock}
                     onChange={(e) => setFormInitialStock(Number(e.target.value))}
+                    onWheel={blurOnWheel}
                     className="w-full text-xs"
                   />
                 </div>
@@ -615,6 +618,7 @@ export default function StockPage() {
                   min="0"
                   value={formMinStock}
                   onChange={(e) => setFormMinStock(Number(e.target.value))}
+                  onWheel={blurOnWheel}
                   className="w-full text-xs"
                 />
               </div>

@@ -134,7 +134,7 @@ export default function DashboardPage() {
               <span className="text-xs font-medium text-[#7E5431]">Incoming</span>
             </div>
 
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-end justify-between">
               <div>
                 <Link
                   href="/operations/receipts"
@@ -173,7 +173,7 @@ export default function DashboardPage() {
               <span className="text-xs font-medium text-[#7E5431]">Outgoing</span>
             </div>
 
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-end justify-between">
               <div>
                 <Link
                   href="/operations/deliveries"
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               <span className="text-xs font-medium text-[#7E5431]">Inter-Location</span>
             </div>
 
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-end justify-between">
               <div>
                 <Link
                   href="/operations/transfers"

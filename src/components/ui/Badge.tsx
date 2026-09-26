@@ -24,8 +24,8 @@ export function Badge({ status, size = "md", className = "" }: BadgeProps) {
 
   if (norm === "draft") {
     styleClasses = "bg-[#FAF5EE] text-[#7E5431] border-[#DFCAB1]";
-  } else if (norm === "waiting") {
-    styleClasses = "bg-amber-50 text-amber-800 border-amber-300";
+  } else if (norm === "waiting" || norm.includes("pending")) {
+    styleClasses = "bg-amber-50 text-amber-800 border-amber-300 font-medium";
   } else if (norm === "ready") {
     styleClasses = "bg-sky-50 text-sky-800 border-sky-300";
   } else if (norm === "done") {
@@ -53,7 +53,7 @@ export function Badge({ status, size = "md", className = "" }: BadgeProps) {
             ? "bg-emerald-500"
             : norm === "ready"
             ? "bg-sky-500"
-            : norm === "waiting" || norm === "low stock"
+            : norm === "waiting" || norm.includes("pending") || norm === "low stock"
             ? "bg-amber-500"
             : norm === "canceled" || norm === "out of stock"
             ? "bg-rose-500"

@@ -21,9 +21,7 @@ function ResetPasswordForm() {
 
   useEffect(() => {
     const qEmail = searchParams.get("email");
-    const qOtp = searchParams.get("otp");
     if (qEmail) setEmail(qEmail);
-    if (qOtp) setOtp(qOtp);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +99,7 @@ function ResetPasswordForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@stocksense.com"
               required
-              className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
+              className="w-full has-icon-left pl-11 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
             />
           </div>
         </div>
@@ -118,12 +116,15 @@ function ResetPasswordForm() {
               type="text"
               maxLength={6}
               value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="e.g. 123456"
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="· · · · · ·"
               required
-              className="w-full pl-9 pr-3.5 py-2.5 font-mono text-center tracking-widest text-lg font-bold bg-white border border-[#DFCAB1] rounded-xl text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
+              className="w-full pl-9 pr-3.5 py-2.5 font-mono text-center tracking-widest text-lg font-bold bg-white border border-[#DFCAB1] rounded-xl text-[#2B170B] placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
             />
           </div>
+          <p className="text-[11px] text-[#7E5431] mt-1">
+            Enter the 6-digit numeric verification code sent to your registered email.
+          </p>
         </div>
 
         <div>
@@ -140,7 +141,7 @@ function ResetPasswordForm() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
+              className="w-full has-icon-left pl-11 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
             />
           </div>
         </div>
@@ -159,7 +160,7 @@ function ResetPasswordForm() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
+              className="w-full has-icon-left pl-11 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
             />
           </div>
         </div>

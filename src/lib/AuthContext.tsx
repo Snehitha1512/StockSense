@@ -62,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = (token: string, userData: User) => {
+    // Always clear any stale token first (e.g. from browser Duplicate Tab which copies sessionStorage)
+    clearSessionToken();
     setSessionToken(token);
     setUser(userData);
   };

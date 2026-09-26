@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { blurOnWheel } from "@/lib/formHelpers";
 import {
   SlidersHorizontal,
   Plus,
@@ -418,6 +419,7 @@ export default function AdjustmentsPage() {
                   min="0"
                   value={countedQty}
                   onChange={(e) => setCountedQty(Number(e.target.value))}
+                  onWheel={blurOnWheel}
                   required
                   className="w-full text-xs font-bold text-base py-2"
                 />

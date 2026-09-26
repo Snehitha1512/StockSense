@@ -13,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sentMessage, setSentMessage] = useState<string | null>(null);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +39,10 @@ export default function ForgotPasswordPage() {
       }
 
       setSentMessage(data.message || "If an account exists with this email, a verification code has been sent.");
-      showToast("Verification code dispatched via email", "success");
+      if (data.dev_otp) {
+        setDevOtp(data.dev_otp);
+      }
+      showToast("Verification code dispatched", "success");
     } catch (err: unknown) {
       setError((err as Error).message);
       showToast((err as Error).message, "error");
@@ -80,6 +84,19 @@ export default function ForgotPasswordPage() {
             <p className="text-[11px] text-emerald-700">
               The code is valid for 10 minutes and single-use only.
             </p>
+
+            {devOtp && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-900">Developer Testing Code:</span>
+                  <span className="font-mono text-sm font-bold tracking-widest bg-amber-200/90 text-amber-950 px-2 py-0.5 rounded">{devOtp}</span>
+                </div>
+                <p className="text-[10px] text-amber-800">
+                  (SMTP not configured in .env. To enable real inbox delivery, configure EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD in .env)
+                </p>
+              </div>
+            )}
+
             <button
               onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}
               className="w-full py-2.5 bg-[#654124] hover:bg-[#50311A] text-white font-medium text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
@@ -104,7 +121,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@stocksense.com"
                   required
-                  className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
+                  className="w-full has-icon-left pl-11 pr-3.5 py-2.5 bg-white border border-[#DFCAB1] rounded-xl text-sm text-[#2B170B] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#7E5431]/20 focus:border-[#7E5431]"
                 />
               </div>
             </div>

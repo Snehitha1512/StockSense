@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { blurOnWheel } from "@/lib/formHelpers";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -540,6 +541,7 @@ export default function DeliveryDetailPage() {
                                 onChange={(e) =>
                                   updateLineQuantity(idx, Math.max(1, Number(e.target.value)))
                                 }
+                                onWheel={blurOnWheel}
                                 className={`w-24 text-xs py-1 font-bold ${
                                   hasStockWarning ? "border-rose-400 bg-rose-50 text-rose-800" : ""
                                 }`}
